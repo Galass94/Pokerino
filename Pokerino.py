@@ -4,6 +4,7 @@ import os
 suits = ["Hearts", "Diamonds", "Spades", "Clubs"]
 cardDisplay = [2,3,4,5,6,7,8,9,10,'J','Q','K','A']
 cardValues = [2,3,4,5,6,7,8,9,10,11,12,13,14]
+playerClasses = ["w", "m", "t", "d", "r"]
 
 class Card:
     def __init__(self, value, suit, display):
@@ -36,11 +37,8 @@ class Deck:
         random.shuffle(self.deck)
 
 class Table:
-    def __init__(self, amountCards):
+    def __init__(self):
         self.listTableCards = []
-        for card in range(amountCards):
-            self.listTableCards.append(deck.deck.pop(0))
-        self.printCards()
 
     def revealCard(self):
         self.listTableCards.append(deck.deck.pop(0))
@@ -57,19 +55,48 @@ class Table:
     def removeCard(self, index):
         self.listTableCards.pop(index)
 
+    def turnOne(self):
+        for player in playerList:
+            player.printHand()
+        for i in range(0,3):
+            self.listTableCards.append(deck.deck.pop(0))
+        self.printCards()
+        if len(self.listTableCards) < 5:
+            if(playerList[0].activateAbility()):
+                nextTurn(False)
+            else:
+                nextTurn(True)
+        # os.system("pause")
+
+
 class Player:
     def __init__(self):
         self.name = input("Enter Player Name: ")
-        print("What class are you?\n(w)arrior - Can destroy on card on the table\n(m)age - Can change the values of up to 2 cards by 1")
-        self.ability = input("(t)hief - Can trade one card from their hand with one card on the table\n")
+        while True:
+            try:
+                print(f"What class are you, {self.getName()}?\n(W)arrior - Can destroy on card on the table\n(M)age - Can change the values of up to 2 cards by 1")
+                print("(T)hief - Can trade one card from their hand with one card on the table\n(D)eprived - BONK")
+                print("(R)andom - Get a random ability")
+                self.ability = input()
+                if self.ability not in playerClasses: raise ValueError
+                break
+            except ValueError as e:
+                print("Please choose a class!")
+                os.system("pause")
+                os.system("cls")
         playerList.append(self)
         self.handsize=2
+        self.money = 100
         self.handCards = []
         self.pairs = []
         self.triples = []
         self.quads = []
         self.pentas = []
         self.hexas = []
+        # self.straight = [] DONE
+        self.flush = ""
+        self.straightFlush = [[],[]]
+        self.royalFlush = [[],[]]
         self.score=0
         if self.ability == "w":
             self.playerClass = "Warrior"
@@ -80,6 +107,12 @@ class Player:
         elif self.ability == "t":
             self.playerClass = "Thief"
             self.abilityCount = 1
+        elif self.ability == "d":
+            self.playerClass = "Deprived"
+            self.abilityCount = 3
+        elif self.ability == "r":
+            self.playerClass = "Random"
+            self.abilityCount = 2
         for card in range(self.handsize):
             self.handCards.append(deck.deck.pop(0))
         print(f"{self.getName()} joins the table!")
@@ -140,9 +173,33 @@ class Player:
         self.handCards.append(table.listTableCards.pop(choiceT-1))
         table.listTableCards.append(self.handCards.pop(choiceT2-1))
 
+    def deprivedAbility(self):
+        temp = random.randint(0, 99)
+        if temp <= 4:
+            print("BONK!!!")
+        else :
+            print("BONK!")
+
+    def randomAbility(self):
+        temp = random.randint(0, len(playerClasses)-2)
+        match temp:
+            case 0:
+                print("WARRIOR ABILITY") 
+                self.warriorAbility()
+            case 1: 
+                print("MAGE ABILITY") 
+                self.mageAbility()
+            case 2: 
+                print("THIEF ABILITY") 
+                self.thiefAbility()
+            case 3: 
+                print("DEPRIVED ABILITY") 
+                self.deprivedAbility()
+        pass
+
     def activateAbility(self):
-        while(self.abilityCount > 0):
-            choice = input(f"\n{self.name.capitalize()}, do you want to activate an ability? - ")
+        while self.abilityCount > 0:
+            choice = input(f"\n{self.getName()}, do you want to activate an ability? - ")
             match(choice):
                 case 'y':
                     self.abilityCount -= 1
@@ -154,6 +211,12 @@ class Player:
                         return True
                     elif self.ability == "t":
                         self.thiefAbility()
+                        return True
+                    elif self.ability == "d":
+                        self.deprivedAbility()
+                        return True
+                    elif self.ability == "r":
+                        self.randomAbility()
                         return True
                 case 'n':
                     return False
@@ -170,41 +233,68 @@ class Player:
             print(card)
         print()
     
-def nextTurnWithDraw():
+    def addMoney(self, x):
+        if x > self.money:
+            self.money = 0
+        else: self.money += x
+    def setgetHandValues(self):
+        self.handValues = []
+        for card in self.handCards:
+            self.handValues.append(card.getValue())
+        return self.handValues
+
+    def setStraight(self, cards):
+        self.straight = cards
+    def getStraight(self):
+        return self.straight
+    def setRoyalFlush(self, suit, cards):
+        self.royalFlush = [suit, cards]
+    def getRoyalFlush(self):
+        return self.royalFlush
+    def setStraightFlush(self, suit, cards):
+        self.straightFlush = [suit, cards]
+    def getStraightFlush(self):
+        return self.straightFlush
+
+
+def nextTurn(draw):
     print("\n\n")
     os.system("pause")
     os.system("cls")
     for player in playerList:
         player.printHand()
-    table.revealCard()
+    if draw:
+        table.revealCard()
+    else:
+        table.printCards()
     if len(table.listTableCards) < 5:
         if(playerList[0].activateAbility()):
-            nextTurnNoDraw()
+            nextTurn(False)
         else:
-            nextTurnWithDraw()
-
-def nextTurnNoDraw():
-    print("\n\n")
-    os.system("pause")
-    os.system("cls")
-    for player in playerList:
-        player.printHand() 
-    table.printCards()
-    if len(table.listTableCards) < 5:
-            if(playerList[0].activateAbility()):
-                nextTurnNoDraw()
-            else:
-                nextTurnWithDraw()
-    else:
-        pass
+            nextTurn(True)
+    else: pass
 
 def checkStraight(player):
+    def isFlush():
+        flushCount = 0
+        for i in range(0, len(player.getStraight())-1):
+            if player.getStraight()[i].getSuit() == player.getStraight()[i+1].getSuit():
+                flushCount += 1
+            else:
+                flushCount = 0
+        return flushCount
+
     count=0
     straightCards = []
     hasStraight=False
-    for i in range(0,len(player.handCards)-1):
+    values = player.setgetHandValues()
+    for i in range(0,len(values)-1):
         if player.handCards[i].getValue() == player.handCards[i+1].getValue():
             continue
+    # for value in values:
+    #     if value-1 in values:
+    #         count += 1
+            
         elif (player.handCards[i].getValue())-1 == player.handCards[i+1].getValue():
             count += 1
             straightCards.append(player.handCards[i])
@@ -217,10 +307,19 @@ def checkStraight(player):
             hasStraight = True
             break
     if hasStraight:
-        if straightCards[0].getValue() == 14:
-            return "Royal Straight"
+        player.setStraight(straightCards)
+        if player.getStraight()[0].getValue() == 14:
+            if isFlush() == 4:
+                player.setRoyalFlush(straightCards[0].getSuit(),straightCards)
+                return "Royal Flush"
+            else:
+                return "Royal Straight"
         else:
-            return "Straight"
+            if isFlush() == 4:
+                player.setStraightFlush(straightCards[0].getSuit(), straightCards)
+                return "Straight Flush"
+            else:
+                return "Straight"
     
 def checkFlush(player):
     diamondCount = 0
@@ -320,23 +419,23 @@ def checkMultiples(player):
     else:
         if hexaCardValues:
             for card in hexaCardValues:
-                print(f"{player.getName()} has 6 of {cardDisplay[cardValues.index(card)]}")
+                print(f"{player.getName()} has 6 {cardDisplay[cardValues.index(card)]}s")
                 player.addScore(100)
         elif pentaCardValues:
             for card in pentaCardValues:
-                print(f"{player.getName()} has 5 of {cardDisplay[cardValues.index(card)]}")
+                print(f"{player.getName()} has 5 {cardDisplay[cardValues.index(card)]}s")
                 player.addScore(50)
         elif quadCardValues:
             for card in quadCardValues:
-                print(f"{player.getName()} has 4 of {cardDisplay[cardValues.index(card)]}")
+                print(f"{player.getName()} has 4 {cardDisplay[cardValues.index(card)]}s")
                 player.addScore(20)
         elif tripleCardValues:
             for card in tripleCardValues:
-                print(f"{player.getName()} has 3 of {cardDisplay[cardValues.index(card)]}")
+                print(f"{player.getName()} has 3 {cardDisplay[cardValues.index(card)]}s")
                 player.addScore(7)
         elif doubleCardValues:
             for card in doubleCardValues:
-                print(f"{player.getName()} has 2 of {cardDisplay[cardValues.index(card)]}")
+                print(f"{player.getName()} has a pair of {cardDisplay[cardValues.index(card)]}s")
                 player.addScore(2)
     return hasMultiples
 
@@ -344,32 +443,37 @@ def highestCard(player):
     player.addScore(1)
     print(f"{player.getName()}'s highest card is {cardDisplay[cardValues.index(player.handCards[0].getValue())]}")
 
-def values(player):
+def values(player): #FIXME: Royal Flush not correct
     #Karten vom Tisch zu Händen hinzufügen
     for card in table.listTableCards:
         player.handCards.append(card)
     def getCardValue(card):
         return card.getValue()
-    player.handCards.sort(key=getCardValue, reverse=True)
+    def getCardSuit(card):
+        return card.getSuit()
+    player.handCards.sort(key=getCardSuit)
+    player.handCards.sort(key=getCardValue,reverse=True)
     while True:
-        if checkStraight(player) == "Straight":
-            if checkFlush(player):
-                player.addScore(30)
-                print(f"{player.getName()} has a Straight Flush!")
-                break
-            else:
-                player.addScore(10)
-                print(f"{player.getName()} has a Straight!")
+        if checkStraight(player) == "Royal Flush":
+            player.addScore(40)
+            print(f"{player.getName()} has a ROYAL FLUSH!!!") #FIXME: Royal Flush with different 
+            for card in player.getRoyalFlush()[1]:
+                print(card)
             break
         elif checkStraight(player) == "Royal Straight":
-            if checkFlush(player):
-                player.addScore(40)
-                print(f"{player.getName()} has a ROYAL FLUSH!!!") #FIX PLEASE FIX PLEASE FIX PLEASE FIX PLEASE FIX PLEASE FIX PLEASE
-                break
-            else:
-                player.addScore(10)
-                print(f"{player.getName()} has a Straight!")
-                break
+            player.addScore(25)
+            print(f"{player.getName()} has a Royal Straight!")
+            for card in player.getStraight():
+                print(card)
+            break
+        elif checkStraight(player) == "Straight Flush":
+            player.addScore(20)
+            print(f"{player.getName()} has a Straight Flush!")
+            break
+        elif checkStraight(player) == "Straight":
+            player.addScore(10)
+            print(f"{player.getName()} has a Straight!")
+            break
         elif checkFlush(player):
             player.addScore(12)
             print(f"{player.getName()} has a Flush!")
@@ -381,15 +485,15 @@ def values(player):
             break
 
 def stackDeck():
-    deck.deck[0] = Card(10,"Diamonds", 10)
-    deck.deck[1] = Card(13,"Spades", 'K')
-    deck.deck[2] = Card(11,"Clubs", 'J')
+    deck.deck[0] = Card(14,"Diamonds", 'A')
+    deck.deck[1] = Card(13,"Diamonds", 'K')
+    deck.deck[2] = Card(12,"Diamonds", 'Q')
     deck.deck[3] = Card(11,"Diamonds", 'J')
     deck.deck[4] = Card(10,"Diamonds", 10)
 
 deck = Deck()
 deck.shuffle()
-deck.shuffle()
+# deck.shuffle()
 # stackDeck()
 os.system("cls")
 playerList = []
@@ -404,8 +508,11 @@ for i in range(playerCount):
     Player()
 for player in playerList:
     player.printHand()
-table = Table(2)
-nextTurnWithDraw()
+#TODO: Implement betting system
+os.system("pause")
+os.system("cls")
+table = Table()
+table.turnOne()
 print("\n")
 for player in playerList:
     values(player)

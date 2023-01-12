@@ -121,10 +121,9 @@ class Player:
         print(f"{self.getName()} joins the table!")
         os.system("pause")
         os.system("cls")
+
     def getName(self):
         return self.name.capitalize()
-    def getPlayerClass(self):
-        return self.playerClass
     def getHandCSV(self):
         handCSV = []
         for card in self.handCards:
@@ -246,6 +245,8 @@ class Player:
                     return False
     def getAbility(self):
         return self.ability
+    def getPlayerClass(self):
+        return self.playerClass
     def addScore(self, x):
         self.score += x
     def getScore(self):
@@ -537,23 +538,27 @@ def stackDeck():
     deck.deck[4] = Card(6,"Diamonds", 6)
     deck.deck[5] = Card(4, "Spades", 4)
 def compareCards(players):
+    # print("\n--- DEBUG : compareCards begins ---")
     if len(players)>=1:
         playerWin = players[0]
-        for i in range(len(players)-1):
+        playerWin.setHandValues()
+        for i in range(len(players)):
             if playerWin == playerList[i]:
                 continue
-            for j in range(7):
-                # print("\nDEBUG : "+playerWin.getName()+": "+str(playerWin.getHandCards()[j]))
-                # print("DEBUG : "+players[i].getName()+": "+str(players[i].getHandCards()[j]))
-                if playerWin.getHandCards()[j].getValue() > players[i].getHandCards()[j].getValue():
+            playerList[i].setHandValues()
+            for j in range(len(players[0].getHandValues())):
+                # print("DEBUG : "+playerWin.getName()+": "+str(playerWin.getHandValues()[j]))
+                # print("DEBUG : "+players[i].getName()+": "+str(players[i].getHandValues()[j]))
+                if playerWin.getHandValues()[j] > players[i].getHandValues()[j]:
                     # print("DEBUG : PlayerWin stays")
                     break
-                elif playerWin.getHandCards()[j].getValue() == players[i].getHandCards()[j].getValue():
+                elif playerWin.getHandValues()[j] == players[i].getHandValues()[j]:
                     pass
                 else:
                     playerWin = playerList[i]
                     # print("DEBUG : PlayerWin changes to "+players[i].getName())
                     break
+        # print("--- DEBUG : compareCards ends ---")
         return playerWin
 
 deck = Deck()
@@ -585,40 +590,51 @@ print("\n")
 for player in playerList:
     values(player)
     player.printScore()
-    # print("Highest card: " + str(player.getHandCards()[0])+"\n")
-#Check who has highest card
-#Compare highest card between 2 players, if they're the same, compare the next cards
-#If one card is higher than the other, compare the winning player with the next player
+#Sort players by score, highest first. Then check if players have the same score
 playerList.sort(key=Player.getScore, reverse=True)
-# for player in playerList:
-#     print(player.getName())
 playersToCompare = []
 playerWin = playerList[0]
-for i in range(playerCount-1):
-    if playerList[i].getScore() == playerList[i+1].getScore():
-        if playerList[i] not in playersToCompare:
-            playersToCompare.append(playerList[i])
-        else: continue
+if playerList[0].getScore() > playerList[1].getScore():
+    pass
+else:
+    for i in range(playerCount-1):
+        if playerList[i].getScore() == playerList[i+1].getScore():
+            if playerList[i] not in playersToCompare:
+                playersToCompare.append(playerList[i])
+            if playerList[i+1] not in playersToCompare:
+                playersToCompare.append(playerList[i+1])
+                # print(f"DEBUG : Added {playerList[i].getName()} to playersToCompare")
+# print(f"--- DEBUG : playersToCompare List ---")
+# for player in playersToCompare:
+#     print(player.getName())
+# print(f"--- DEBUG END ---")
+#If more than 2 players have the same score, check who has the highest value card
+#Compare highest card between 2 players, if they're the same, compare the next cards
+#If one card is higher than the other, compare the winning player with the next player
 if len(playersToCompare)>=2:
     playerWin = compareCards(playersToCompare)
 else:
     playerWin = playerList[0]
     for j in range(0, playerCount):
-        if playerWin.getScore() > playerList[j].getScore():
+        if playerWin == playerList[j]:
             continue
+        if playerWin.getScore() > playerList[j].getScore():
+            pass
+            #playerWin = playerList[j]
         elif playerWin.getScore() == playerList[j].getScore():
             pass
         else:
             playerWin = playerList[j]
-print("Winner is: "+ playerWin.getName())
-#DEBUG ONLY
-#finalPlayerScores = []
-#for player in playerList:
+            # print(f"--- DEBUG : {playerList[j].getName()} is new playerWin")
+print("\nWinner is: "+ playerWin.getName())
+# DEBUG ONLY
+# finalPlayerScores = []
+# for player in playerList:
 #    finalPlayerScores.append({"Name": player.getName(), "Score": player.getScore(), "Class": player.getPlayerClass(), "Hand": player.getHandCSV()})
-#df = pd.DataFrame.from_records(finalPlayerScores)
-#df.to_csv("results.csv", index=False, mode="a", header=True)
-#with open("results.csv", "a") as file:
+# df = pd.DataFrame.from_records(finalPlayerScores)
+# df.to_csv("results.csv", index=False, mode="a", header=True)
+# with open("results.csv", "a") as file:
 #    file.write("\n")
-#ADD PLAYER.GETHANDCSV() TO NEW CODE!!!
-#DEBUG ONLY
+# ADD PLAYER.GETHANDCSV() TO NEW CODE!!!
+# DEBUG ONLY
 os.system("pause")

@@ -1,5 +1,6 @@
 import random
 import os
+import pandas as pd
 
 suits = ["Hearts", "Diamonds", "Spades", "Clubs"]
 cardDisplay = [2,3,4,5,6,7,8,9,10,'J','Q','K','A']
@@ -120,10 +121,15 @@ class Player:
         print(f"{self.getName()} joins the table!")
         os.system("pause")
         os.system("cls")
-
     def getName(self):
         return self.name.capitalize()
-
+    def getPlayerClass(self):
+        return self.playerClass
+    def getHandCSV(self):
+        handCSV = []
+        for card in self.handCards:
+            handCSV.append(f"{card.getDisplay():>2} of {card.getSuit()}")
+        return handCSV
     def warriorAbility(self):
         print("You activated your ability to remove one card from the table")
         while True:
@@ -584,8 +590,8 @@ for player in playerList:
 #Compare highest card between 2 players, if they're the same, compare the next cards
 #If one card is higher than the other, compare the winning player with the next player
 playerList.sort(key=Player.getScore, reverse=True)
-for player in playerList:
-    print(player.getName())
+# for player in playerList:
+#     print(player.getName())
 playersToCompare = []
 playerWin = playerList[0]
 for i in range(playerCount-1):
@@ -599,10 +605,20 @@ else:
     playerWin = playerList[0]
     for j in range(0, playerCount):
         if playerWin.getScore() > playerList[j].getScore():
-            playerWin = playerList[j]
+            continue
         elif playerWin.getScore() == playerList[j].getScore():
             pass
         else:
             playerWin = playerList[j]
 print("Winner is: "+ playerWin.getName())
+#DEBUG ONLY
+#finalPlayerScores = []
+#for player in playerList:
+#    finalPlayerScores.append({"Name": player.getName(), "Score": player.getScore(), "Class": player.getPlayerClass(), "Hand": player.getHandCSV()})
+#df = pd.DataFrame.from_records(finalPlayerScores)
+#df.to_csv("results.csv", index=False, mode="a", header=True)
+#with open("results.csv", "a") as file:
+#    file.write("\n")
+#ADD PLAYER.GETHANDCSV() TO NEW CODE!!!
+#DEBUG ONLY
 os.system("pause")

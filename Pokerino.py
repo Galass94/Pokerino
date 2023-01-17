@@ -3,9 +3,10 @@ import os
 import pandas as pd
 
 suits = ["Hearts", "Diamonds", "Spades", "Clubs"]
-cardDisplay = [2,3,4,5,6,7,8,9,10,'J','Q','K','A']
-cardValues = [2,3,4,5,6,7,8,9,10,11,12,13,14]
-playerClasses = ["w", "m", "t", "d","b", "r"]
+short_suits = ["h", "d", "s", "c"]
+card_display = [2,3,4,5,6,7,8,9,10,'J','Q','K','A']
+card_values = [2,3,4,5,6,7,8,9,10,11,12,13,14]
+player_classes = ["w", "m", "t", "d", "b", "p", "r"]
 
 class Card:
     def __init__(self, value, suit, display):
@@ -20,13 +21,15 @@ class Card:
         self.value = x
     def getSuit(self):
         return self.suit
+    def setSuit(self, suit):
+        self.suit = suit
     def getDisplay(self):
         return self.display
     def setDisplay(self, display):
         self.display = display
 
     def __str__(self):
-        return f"{cardDisplay[cardValues.index(self.value)]:>2} of {self.suit}"
+        return f"{card_display[card_values.index(self.value)]:>2} of {self.suit}"
     def __eq__(self, other):
         if isinstance(other, Card):
             return self.value == other.value and self.suit == other.suit
@@ -35,50 +38,52 @@ class Deck:
     deck = []
     def __init__(self):
         for suit in suits:
-            for value in cardValues:
-                self.deck.append(Card(value, suit, cardDisplay[cardValues.index(value)]))
+            for value in card_values:
+                self.deck.append(Card(value, suit, card_display[card_values.index(value)]))
     def shuffle(self):
         random.shuffle(self.deck)
 class Table:
     def __init__(self):
         self.listTableCards = []
-
     def revealCard(self):
         self.listTableCards.append(deck.deck.pop(0))
         self.printCards()
-        
-    
     def printCards(self):
         index=1
         print("--- Table Cards ---")
         for card in self.listTableCards:
             print(f"({index}) {card}")
             index+=1
-
     def removeCard(self, index):
         self.listTableCards.pop(index)
-
     def turnOne(self):
-        for player in playerList:
-            player.printHand()
+        # for player in playerList:
+        #     player.printHand()
         for i in range(0,3):
             self.listTableCards.append(deck.deck.pop(0))
-        self.printCards()
+        # self.printCards()
         if len(self.listTableCards) < 5:
-            if(playerList[0].activateAbility()):
-                nextTurn(False)
-            else:
-                nextTurn(True)
+            # if(playerList[0].activateAbility()):
+                nextTurnWithAbilities(False, 0)
+            # else:
+            #     nextTurnWithAbilities(True, 0)
 class Player:
     def __init__(self):
-        self.name = input("Enter Player Name: ")
         while True:
             try:
-                print(f"What class are you, {self.getName()}?\n(W)arrior - Can destroy on card on the table\n(M)age - Can change the values of up to 2 cards by 1")
+                self.name = input("Enter Player Name: ")
+                if len(self.name) == 0: raise ValueError
+                break
+            except ValueError:
+                print("You need a name!")
+        while True:
+            try:
+                print(f"What class are you, {self.getName()}?")
+                print("(W)arrior - Can destroy on card on the table\n(M)age - Can change the values of up to two cards by 1")
                 print("(T)hief - Can trade one card from their hand with one card on the table\n(D)eprived - BONK")
-                print("(R)andom - Get a random ability\n(B)ard - Gets 1 Mulligan")
+                print("(R)andom - Get a random ability\n(B)ard - Gets 1 Mulligan\n(P)riest - Can change the top card of the deck")
                 self.ability = input().lower()
-                if self.ability not in playerClasses: raise ValueError
+                if self.ability not in player_classes: raise ValueError
                 break
             except ValueError as e:
                 print("Please choose a class!")
@@ -86,8 +91,12 @@ class Player:
                 os.system("cls")
         playerList.append(self)
         self.handsize=2
-        self.money=100
+        self.money=200
+        self.has_bet = False
+        self.has_bet_big_blind = False
+        self.bet = 0
         self.handCards = []
+        self.handValues = []
         self.highestCard: str
         self.pairs = []
         self.triples = []
@@ -113,6 +122,9 @@ class Player:
         elif self.ability == "b":
             self.playerClass = "Bard"
             self.abilityCount = 1
+        elif self.ability == "p":
+            self.playerClass = "Priest"
+            self.abilityCount = 2
         elif self.ability == "r":
             self.playerClass = "Random"
             self.abilityCount = 2
@@ -122,15 +134,15 @@ class Player:
         os.system("pause")
         os.system("cls")
 
-    def getName(self):
+    def getName(self): # get player name and capitalize it
         return self.name.capitalize()
-    def getHandCSV(self):
+    def getHandCSV(self): # format cards for output as value in CSV file
         handCSV = []
         for card in self.handCards:
             handCSV.append(f"{card.getDisplay():>2} of {card.getSuit()}")
         return handCSV
-    def warriorAbility(self):
-        print("You activated your ability to remove one card from the table")
+    def warriorAbility(self): # Warrior who destroys one card on the table
+        print("You activated your ability to destroy one card on the table")
         while True:
             try:
                 choice2 = int(input("Which one do you want to remove? - "))
@@ -139,7 +151,7 @@ class Player:
             except ValueError as e:
                 print("Enter a valid number!")
         table.listTableCards.pop(choice2-1)
-    def mageAbility(self):
+    def mageAbility(self): # Mage who changes the value of up to 2 cards on the table
         print("You activated your ability to change the value of one card on the table!")
         while True:
             try:
@@ -153,13 +165,13 @@ class Player:
             if table.listTableCards[choice2-1].getValue() == 14:
                 table.listTableCards[choice2-1].setValue(2)
             else:
-                table.listTableCards[choice2-1].setValue(cardValues[cardValues.index(table.listTableCards[choice2-1].value)+1])
+                table.listTableCards[choice2-1].setValue(card_values[card_values.index(table.listTableCards[choice2-1].value)+1])
         elif '-':
             if table.listTableCards[choice2-1].getValue() == 2:
                 table.listTableCards[choice2-1].setValue(14)
             else:
-                table.listTableCards[choice2-1].setValue(cardValues[cardValues.index(table.listTableCards[choice2-1].value)-1])
-    def thiefAbility(self):
+                table.listTableCards[choice2-1].setValue(card_values[card_values.index(table.listTableCards[choice2-1].value)-1])
+    def thiefAbility(self): # Thief who exchanges one card from his hand with one from the table
         print("You activated your ability to switch one card from the table with one from your hand!")
         while True:
             try:
@@ -177,13 +189,14 @@ class Player:
                 print("Enter a valid number!")
         self.handCards.append(table.listTableCards.pop(choiceT-1))
         table.listTableCards.append(self.handCards.pop(choiceT2-1))
-    def deprivedAbility(self):
+    def deprivedAbility(self): # BONK
         temp = random.randint(0, 99)
         if temp <= 4:
             print(f"{playerList[random.randint(0,len(playerList)-1)].getName()} got BONKed!!!")
         else :
             print("BONK!")
-    def bardAbility(self):
+    def bardAbility(self): # Bard who gets one free mulligan
+        self.printHand()
         print(f"{self.getName()}, do you want to draw a new hand? (Y/N)")
         choiceB = input().lower()
         match(choiceB):
@@ -201,8 +214,49 @@ class Player:
                 self.abilityCount -= 1
                 pass
         pass
-    def randomAbility(self):
-        temp = random.randint(0, len(playerClasses)-2)
+    def priestAbility(self): # Priest who can influence cards on top of the deck instead of the table
+        print("You activated your ability to change the value of the top card of the deck!")
+        print(f"The next card is {deck.deck[0]}")
+        while True:
+            try:
+                choice_p = input("Do you want to change the value or the suit of the card? (v/s) -> ").lower()
+                # if choice_p != 'v' or choice_p != 's': raise ValueError
+                break
+            except ValueError as e:
+                print("Please choose between \'v\' and \'s\'!")
+        match choice_p:
+            case "v":
+                choice_p2 = input("Do you want to increase or decrease the value? (+/-) -> ")
+                if choice_p2=='+':
+                    if deck.deck[0].getValue() == 14:
+                        deck.deck[0].setValue(2)
+                    else:
+                        deck.deck[0].setValue(card_values[card_values.index(deck.deck[0].value)+1])
+                elif '-':
+                    if deck.deck[0].getValue() == 2:
+                        deck.deck[0].setValue(14)
+                    else:
+                        deck.deck[0].setValue(card_values[card_values.index(deck.deck[0].value)-1])
+            case "s":
+                while True:
+                    try:
+                        choice_p2 = input("Which suit do you want the card to have? -> ").lower()
+                        if choice_p2 not in short_suits: raise ValueError
+                        break
+                    except ValueError as e:
+                        print("Enter a correct Suit! (d,h,c or s)")
+                match choice_p2:
+                    case "d":
+                        deck.deck[0].setSuit("Diamonds")
+                    case "h":
+                        deck.deck[0].setSuit("Hearts")
+                    case "c":
+                        deck.deck[0].setSuit("Clubs")
+                    case "s":
+                        deck.deck[0].setSuit("Spades")
+        print(f"Changed the top card to {deck.deck[0]}")
+    def randomAbility(self): # Get a random ability every time you activate yours
+        temp = random.randint(0, len(player_classes)-2)
         match temp:
             case 0:
                 print("WARRIOR ABILITY") 
@@ -226,7 +280,7 @@ class Player:
             match(choice):
                 case 'y':
                     self.abilityCount -= 1
-                    if self.ability == "w":
+                    if self.ability   == "w":
                         self.warriorAbility()
                         return True
                     elif self.ability == "m":
@@ -237,6 +291,9 @@ class Player:
                         return True
                     elif self.ability == "d":
                         self.deprivedAbility()
+                        return True
+                    elif self.ability == "p":
+                        self.priestAbility()
                         return True
                     elif self.ability == "r":
                         self.randomAbility()
@@ -259,17 +316,41 @@ class Player:
             print(card)
         print()
     def addMoney(self, x):
-        if x > self.money:
-            self.money = 0
-        else: self.money += x
+        self.money += x
+    def getMoney(self):
+        return self.money
+    def betMoney(self, x):
+        self.money -= x
+        pot.addMoney(x)
+        self.has_bet = True
+        self.bet += x
+    def setHasBetBigBlind(self, has_bet_big_blind):
+        self.has_bet_big_blind = has_bet_big_blind
+    def getHasBetBigBlind(self):
+        return self.has_bet_big_blind
+    def setBet(self, bet):
+        self.bet += bet
+        self.has_bet = True
+    def getBet(self):
+        return self.bet
+    def getHasBet(self):
+        return self.has_bet
+    def setLastBettingAction(self, last_betting_action):
+        self.last_betting_action = last_betting_action
+    def getLastBettingAction(self):
+        return self.last_betting_action
     def setHandValues(self):
-        self.handValues = []
+        self.handValues.clear()
         for card in self.handCards:
             self.handValues.append(card.getValue())
     def getHandValues(self):
-        return self.handValues
+        short_hand_values = self.handValues
+        for value in short_hand_values:
+            if short_hand_values.count(value) >1:
+                short_hand_values.remove(value)
+        return short_hand_values
     def setgetHandValues(self):
-        self.handValues = []
+        self.handValues.clear()
         for card in self.handCards:
             self.handValues.append(card.getValue())
             return self.handValues
@@ -299,7 +380,19 @@ class Player:
         return self.flush
     def setPairs(self, value):
         self.pairs.append(value)
-def nextTurn(draw):
+class Pot:
+    def __init__(self):
+        self.money = 0
+    def clearPot(self):
+        self.money = 0
+    def getMoney(self):
+        return self.money
+    def addMoney(self, x):
+        self.money += x
+    def potToWinner(self):
+        for player in playerWin:
+            player.addMoney(self.money/len(playerWin))
+def nextTurn(draw):             # Advance one turn - boolean draw to decide whether the table gets an extra card or not
     print("\n\n")
     os.system("pause")
     os.system("cls")
@@ -315,7 +408,25 @@ def nextTurn(draw):
         else:
             nextTurn(True)
     else: pass
-def checkRoyalFlush(player):
+def nextTurnWithAbilities(draw, index):
+    os.system("\n\npause")
+    os.system("cls")
+    if draw:
+        table.listTableCards.append(deck.deck.pop(0))
+    # for index in len(playerList):
+    print(f"{playerList[index].getName()}, it is your turn!")
+    os.system("pause")
+    os.system("cls")
+    playerList[index].printHand()
+    table.printCards()
+    playerList[index].activateAbility()
+    if len(table.listTableCards) < 5:
+        if index == len(playerList)-1:
+            nextTurnWithAbilities(True, 0)
+        else:
+            nextTurnWithAbilities(False, index+1)
+
+def checkRoyalFlush(player):    # Check player's hand for a Royal Flush
     royalFlush = [[Card(14, "Diamonds", "A"), Card(13, "Diamonds", "K"), Card(12, "Diamonds", "Q"), Card(11, "Diamonds", "J"), Card(10, "Diamonds", 10)],
     [Card(14, "Hearts", "A"), Card(13, "Hearts", "K"), Card(12, "Hearts", "Q"), Card(11, "Hearts", "J"), Card(10, "Hearts", 10)],
     [Card(14, "Clubs", "A"), Card(13, "Clubs", "K"), Card(12, "Clubs", "Q"), Card(11, "Clubs", "J"), Card(10, "Clubs", 10)],
@@ -336,7 +447,7 @@ def checkRoyalFlush(player):
         return True
     else:
         return False
-def checkStraight(player):
+def checkStraight(player):      # Check player's hand for Flush
     count=0
     straightCards = []
     hasStraight=False
@@ -364,7 +475,7 @@ def checkStraight(player):
             return "Straight Flush"
         else:
             return "Straight"
-def checkFlush(player):     # Check if player has Flush and if they do, return the suit of the flush
+def checkFlush(player):         # Check if player has Flush and if they do, return the suit of the flush
     diamondCount = 0
     heartCount = 0
     spadeCount = 0
@@ -396,7 +507,7 @@ def checkFlush(player):     # Check if player has Flush and if they do, return t
         # print(f"{player.getName()} has a Flush of Clubs!")
         hasFlush = True
     return hasFlush
-def checkMultiples(player): # Check if player has multiples of a value and if they do, return the highest multiple
+def checkMultiples(player):     # Check if player has multiples of a value and if they do, return the highest multiple
     for card in player.handCards:
         card.winners["Pair"] = False
         card.winners["Triple"] = False
@@ -406,6 +517,8 @@ def checkMultiples(player): # Check if player has multiples of a value and if th
         count = 0
         hasMultiples = False
         for cardToComp in player.handCards:
+            if card == cardToComp:
+                continue
             if card.getValue() == cardToComp.getValue():
                 count += 1
                 if count==6:
@@ -457,7 +570,7 @@ def checkMultiples(player): # Check if player has multiples of a value and if th
                 doubleCardValues.append(card.getValue())
                 hasMultiples=True
                 double = 1
-        if triple == 1 and double == 1 :
+        if triple == 1 and double == 1 : # Check for Full House
             hasFullHouse = True
     if hasFullHouse:
         player.addScore(15)
@@ -465,31 +578,31 @@ def checkMultiples(player): # Check if player has multiples of a value and if th
     else:
         if hexaCardValues:
             for card in hexaCardValues:
-                print(f"{player.getName()} has 6 {cardDisplay[cardValues.index(card)]}s")
+                print(f"{player.getName()} has 6 {card_display[card_values.index(card)]}s")
                 player.addScore(100)
         elif pentaCardValues:
             for card in pentaCardValues:
-                print(f"{player.getName()} has 5 {cardDisplay[cardValues.index(card)]}s")
+                print(f"{player.getName()} has 5 {card_display[card_values.index(card)]}s")
                 player.addScore(50)
         elif quadCardValues:
             for card in quadCardValues:
-                print(f"{player.getName()} has 4 {cardDisplay[cardValues.index(card)]}s")
+                print(f"{player.getName()} has 4 {card_display[card_values.index(card)]}s")
                 player.addScore(20)
         elif tripleCardValues:
             for card in tripleCardValues:
-                print(f"{player.getName()} has 3 {cardDisplay[cardValues.index(card)]}s")
+                print(f"{player.getName()} has 3 {card_display[card_values.index(card)]}s")
                 player.addScore(7)
         elif doubleCardValues:
             for card in doubleCardValues:
-                print(f"{player.getName()} has a pair of {cardDisplay[cardValues.index(card)]}s")
+                print(f"{player.getName()} has a pair of {card_display[card_values.index(card)]}s")
                 player.addScore(2)
     return hasMultiples
-def highestCard(player):    # If player has nothing else, output the highest card in their Hand
+def highestCard(player):        # If player has nothing else, output the highest card in their Hand
     player.addScore(1)
-    print(f"{player.getName()}'s highest card is {cardDisplay[cardValues.index(player.handCards[0].getValue())]}")
+    print(f"{player.getName()}'s highest card is {card_display[card_values.index(player.handCards[0].getValue())]}")
     player.setHighestCard(player.getHandCards()[0])
-def values(player):
-    #Karten vom Tisch zu Händen hinzufügen
+def values(player):             # Check all cards from player's hand and decide what the most valuable combination is
+    # Add cards from table to hand of each player for easier comparison
     for card in table.listTableCards:
         player.handCards.append(card)
     player.handCards.sort(key=Card.getValue,reverse=True)
@@ -530,13 +643,35 @@ def values(player):
         else: 
             highestCard(player)
             break
-def stackDeck():
+def stackDeckCheck():
+    deck.deck[0] = Card(8,"Hearts", 8)        #P1
+    deck.deck[1] = Card(6,"Hearts", 6)        #P1
+    deck.deck[2] = Card(11,"Clubs", 'J')     #P2
+    deck.deck[3] = Card(2,"Hearts", 2)        #P2
+    deck.deck[4] = Card(3,"Clubs", 3)        #P3
+    deck.deck[5] = Card(7,"Spades", 7)        #P3
+    deck.deck[6] = Card(9,"Hearts", 9)        #Table vvvvv
+    deck.deck[7] = Card(6,"Clubs", 6)
+    deck.deck[8] = Card(13,"Clubs", 'K')
+    deck.deck[9] = Card(10,"Hearts", 10)
+    deck.deck[10] = Card(2,"Hearts", 2)
+def stackDeck1PFlush():
     deck.deck[0] = Card(2,"Diamonds", 2)
     deck.deck[1] = Card(3,"Diamonds", 3)
     deck.deck[2] = Card(4,"Diamonds", 4)
     deck.deck[3] = Card(5,"Diamonds", 5)
     deck.deck[4] = Card(6,"Diamonds", 6)
     deck.deck[5] = Card(4, "Spades", 4)
+def stackDeck2PSameCards():
+    deck.deck[0] = Card(2,"Diamonds", 2) #P1
+    deck.deck[1] = Card(3,"Diamonds", 3) #P1
+    deck.deck[2] = Card(3,"Diamonds", 3) #P2
+    deck.deck[3] = Card(3,"Diamonds", 3) #P2
+    deck.deck[4] = Card(2,"Diamonds", 2) #Table vvvvv
+    deck.deck[5] = Card(3,"Diamonds", 3)
+    deck.deck[6] = Card(4,"Diamonds", 4)
+    deck.deck[7] = Card(5,"Diamonds", 5)
+    deck.deck[8] = Card(6,"Diamonds", 6)
 def compareCards(players):
     # print("\n--- DEBUG : compareCards begins ---")
     if len(players)>=1:
@@ -549,10 +684,10 @@ def compareCards(players):
             for j in range(len(players[0].getHandValues())):
                 # print("DEBUG : "+playerWin.getName()+": "+str(playerWin.getHandValues()[j]))
                 # print("DEBUG : "+players[i].getName()+": "+str(players[i].getHandValues()[j]))
-                if playerWin.getHandValues()[j] > players[i].getHandValues()[j]:
+                if playerWin.getHandCards()[j].getValue() > players[i].getHandCards()[j].getValue():
                     # print("DEBUG : PlayerWin stays")
                     break
-                elif playerWin.getHandValues()[j] == players[i].getHandValues()[j]:
+                elif playerWin.getHandCards()[j].getValue() == players[i].getHandCards()[j].getValue():
                     pass
                 else:
                     playerWin = playerList[i]
@@ -560,81 +695,199 @@ def compareCards(players):
                     break
         # print("--- DEBUG : compareCards ends ---")
         return playerWin
+def blinds():
+    global big_blind
+    big_blind = 5
+    small_blind = 2
+    print(f"{big_blind_player.getName()} throws {big_blind} gold into the pot.")
+    big_blind_player.betMoney(big_blind)
+    print(f"{playerList[playerList.index(big_blind_player)+1].getName()} throws {small_blind} gold into the pot.")
+    playerList[playerList.index(big_blind_player)+1].betMoney(small_blind)
+    global last_bet
+    last_bet = big_blind
+def startGameBets():
+    random.shuffle(playerList)
+    global big_blind_player
+    global last_bet
+    global big_blind
+    big_blind_player = playerList[0]
+    pass_count = 0
+    turn_count = 0
+    blinds()
+    while(pass_count < len(playerList)):
+        current_bet = big_blind
+        for player in playerList:
+            if player == big_blind_player and turn_count == 0:
+                player.setHasBetBigBlind(True)
+                last_player = player
+                continue
+            print(f"\n{player.getName()}, it is your turn!")
+            os.system("pause")
+            os.system("cls")
+            player.printHand()
+            print(f"\n{player.getName()}, you have {player.getMoney()} gold.")
+            while True:
+                try:
+                    # for p in playerList:
+                    #     print(f"{p.getName()} has bet {p.getBet()} gold")
+                    print(f" --- DEBUG : Current Bet = {current_bet} ---")
+                    if player.getBet() == last_bet:
+                        print("Fold - Quit this game and lose your current bet.")
+                        print("Call - Raise your bet to the current bet.")
+                        print("Raise - Raise your bet and put more gold into the pot. Total gold has to be higher than the current bet.")
+                        print("Pass - Pass your turn without raising your bet.")
+                        turn_action = input(f"\nDo you want to fold, call, raise or pass? (F/C/R/P) -> ").lower()
+                        if turn_action not in ["f", "c", "r", "p"]: raise ValueError
+                        else: break
+                    else:
+                        print("Fold - Quit this game and lose your current bet.")
+                        print("Call - Raise your bet to the current bet.")
+                        print("Raise - Raise your bet and put more gold into the pot. Total gold has to be higher than the current bet.")
+                        turn_action = input(f"Do you want to fold, call or raise? (F/C/R) -> ").lower()
+                        if turn_action == "p" or turn_action not in ["f", "c", "r"]: raise ValueError
+                        else: break
+                except ValueError as e:
+                    print("Not a legal action!")
+            os.system("cls")
+            match turn_action:
+                case "f":
+                    print(f"{player.getName()} folds!")
+                    playerList.remove(player)
+                case "c":
+                    if player.getBet() == last_bet:
+                        print(f"{player.getName()} passes.")
+                        pass_count += 1
+                    else:
+                        print(f"{player.getName()} calls the bet.")
+                        player.betMoney(last_bet - player.getBet())
+                        print(f"{player.getName()} has {player.getMoney()} gold left.")
+                        print(f"{player.getName()} has bet a total of {player.getBet()} gold.")
+                        pass_count = 0
+                case "r":
+                    while True:
+                        try:
+                            raised_bet = int(input("By how much gold do you want to raise the bet? -> "))
 
-deck = Deck()
-for i in range(7):
-    deck.shuffle()
-# stackDeck()
-os.system("cls")
-playerList = []
-while True:
-    try:
-        playerCount = int(input("How many players? "))
-        if playerCount > 5: raise ValueError
-        break
-    except ValueError as e:
-        print("Enter a valid number!")
-for i in range(playerCount):
-    Player()
-for player in playerList:
-    player.printHand()
-#TODO: Implement betting system
-for player in playerList:
-    if player.getAbility().lower() == "b":
-        player.bardAbility()
-os.system("pause")
-os.system("cls")
-table = Table()
-table.turnOne()
-print("\n")
-for player in playerList:
-    values(player)
-    player.printScore()
-#Sort players by score, highest first. Then check if players have the same score
-playerList.sort(key=Player.getScore, reverse=True)
-playersToCompare = []
-playerWin = playerList[0]
-if playerList[0].getScore() > playerList[1].getScore():
-    pass
-else:
-    for i in range(playerCount-1):
-        if playerList[i].getScore() == playerList[i+1].getScore():
-            if playerList[i] not in playersToCompare:
-                playersToCompare.append(playerList[i])
-            if playerList[i+1] not in playersToCompare:
-                playersToCompare.append(playerList[i+1])
-                # print(f"DEBUG : Added {playerList[i].getName()} to playersToCompare")
-# print(f"--- DEBUG : playersToCompare List ---")
-# for player in playersToCompare:
-#     print(player.getName())
-# print(f"--- DEBUG END ---")
-#If more than 2 players have the same score, check who has the highest value card
-#Compare highest card between 2 players, if they're the same, compare the next cards
-#If one card is higher than the other, compare the winning player with the next player
-if len(playersToCompare)>=2:
-    playerWin = compareCards(playersToCompare)
-else:
-    playerWin = playerList[0]
-    for j in range(0, playerCount):
-        if playerWin == playerList[j]:
+                            # If player tries to raise to an amount less than the current bet, raise an error
+                            if raised_bet + player.getBet() <= current_bet: raise ValueError
+
+                            player.betMoney(raised_bet)
+                            # print(f" --- DEBUG : Last Bet:{last_bet} \t Player Bet:{player.getBet()} --- ")
+                            last_bet = player.getBet()
+                            print(f"{player.getName()} raises the bet to {player.getBet()}!")
+                            print(f"{player.getName()} has {player.getMoney()} gold left.")
+                            pass_count = 0
+                            current_bet = player.getBet()
+                            break
+                        except ValueError as e:
+                            print("Raised bet has to be higher than the current bet!")
+                case "p":
+                    pass_count += 1
+                    print(f"{player.getName()} passes!")
+            print(f"There is {pot.getMoney()} gold in the pot.")
+            # last_player = player
+        print(f"Turn {turn_count} ends!")
+        turn_count += 1
+    os.system("pause")
+    os.system("cls")
+def main():
+    global last_bet
+    global pot
+    pot = Pot()
+    global deck 
+    deck = Deck()
+    for i in range(7): # shuffle deck 7 times
+        deck.shuffle()
+    # stackDeck2PSameCards()
+    os.system("cls")
+    global playerList
+    playerList = []
+    global playerCount
+    while True: # ask for player count and raise error if wrong input
+        try:
+            playerCount = int(input("How many players? "))
+            if playerCount > 5: raise ValueError
+            break
+        except ValueError as e:
+            print("Enter a valid number!")
+    for i in range(playerCount): # Create players according to player count
+        Player()
+    #TODO: Implement betting system
+    startGameBets()
+    #TODO: Implement betting system
+    # for player in playerList: # print every player's hand
+    #     player.printHand()
+    for player in playerList: # Let bards mulligan if they want
+        if player.getAbility().lower() == "b":
+            print(f"{player.getName()}'s turn.")
+            os.system("pause")
+            player.bardAbility()
+    os.system("pause")
+    os.system("cls")
+    global table
+    table = Table()
+    table.turnOne()
+    print("\n")
+    for player in playerList: # check every player's cards and print their final score
+        values(player)
+        player.printScore()
+    #Sort players by score, highest first. Then check if players have the same score
+    playerList.sort(key=Player.getScore, reverse=True)
+    playersToCompare = []
+    global playerWin
+    playerWin = []
+    playerWin.append(playerList[0])
+    if len(playerList) > 1:
+        if playerList[0].getScore() > playerList[1].getScore():
+            pass
+        else: # add players with equal score to a list that's compared later
+            for i in range(playerCount-1):
+                if playerList[i].getScore() == playerList[i+1].getScore():
+                    if playerList[i] not in playersToCompare:
+                        playersToCompare.append(playerList[i])
+                    if playerList[i+1] not in playersToCompare:
+                        playersToCompare.append(playerList[i+1])
+                        # print(f"DEBUG : Added {playerList[i].getName()} to playersToCompare")
+    # print(f"--- DEBUG : playersToCompare List ---")
+    # for player in playersToCompare:
+    #     print(player.getName())
+    # print(f"--- DEBUG END ---")
+    #If more than 2 players have the same score, check who has the highest value card
+    #Compare highest card between 2 players, if they're the same, compare the next cards
+    #If one card is higher than the other, compare the winning player with the next player
+    if len(playersToCompare)>=2:
+        playerWin[0] = compareCards(playersToCompare)
+    else:
+        playerWin[0] = playerList[0]
+        for j in range(0, playerCount):
+            if playerWin[0] == playerList[j]:
+                continue
+            if playerWin[0].getScore() < playerList[j].getScore():
+                playerWin[0] = playerList[j]
+                # print(f"--- DEBUG : {playerList[j].getName()} is new playerWin")
+    for player in playerList: # compare every player's hand with winner's hand. If they have the same cards, add other player to winners
+        if player == playerWin[0]:
+            # print(f" --- DEBUG : Same Player! ---")
             continue
-        if playerWin.getScore() > playerList[j].getScore():
-            pass
-            #playerWin = playerList[j]
-        elif playerWin.getScore() == playerList[j].getScore():
-            pass
-        else:
-            playerWin = playerList[j]
-            # print(f"--- DEBUG : {playerList[j].getName()} is new playerWin")
-print("\nWinner is: "+ playerWin.getName())
-# DEBUG ONLY
-# finalPlayerScores = []
-# for player in playerList:
-#    finalPlayerScores.append({"Name": player.getName(), "Score": player.getScore(), "Class": player.getPlayerClass(), "Hand": player.getHandCSV()})
-# df = pd.DataFrame.from_records(finalPlayerScores)
-# df.to_csv("results.csv", index=False, mode="a", header=True)
-# with open("results.csv", "a") as file:
-#    file.write("\n")
-# ADD PLAYER.GETHANDCSV() TO NEW CODE!!!
-# DEBUG ONLY
-os.system("pause")
+        # print(f" --- DEBUG : {playerWin[0].getName()} has {playerWin[0].getHandValues()} ---")
+        # print(f" --- DEBUG : {player.getName()} has {player.getHandValues()} ---")
+        if playerWin[0].getHandValues() == player.getHandValues() and playerWin[0].getScore() == player.getScore():
+            # print(f" --- DEBUG : {player.getName()} added to winning players! ---")
+            playerWin.append(player)
+    print()
+    pot.potToWinner()
+    for player in playerWin:
+        print(f"Winner is {player.getName()} and now has {player.getMoney()} gold.")
+    # DEBUG ONLY
+    # finalPlayerScores = []
+    # for player in playerList:
+    #    finalPlayerScores.append({"Winner": bool(player in playerWin), "Name": player.getName(), "Score": player.getScore(), "Class": player.getPlayerClass(), "Money Bet": player.getBet(),"Hand": player.getHandCSV()})
+    # df = pd.DataFrame.from_records(finalPlayerScores)
+    # df.to_csv("results.csv", index=False, mode="a", header=True)
+    # with open("results.csv", "a") as file:
+    #    file.write("\n")
+    # DEBUG ONLY
+    os.system("pause")
+
+if __name__ == '__main__':
+    main()

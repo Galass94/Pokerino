@@ -7,7 +7,7 @@ suits = ["Hearts", "Diamonds", "Spades", "Clubs"]
 short_suits = ["h", "d", "s", "c"]
 card_display = [2,3,4,5,6,7,8,9,10,'J','Q','K','A']
 card_values =  [2,3,4,5,6,7,8,9,10, 11, 12, 13, 14]
-player_classes = ["w", "m", "t", "d", "b", "p", "v", "g", "r"]
+#player_classes = ["w", "m", "t", "d", "b", "p", "v", "g", "r"]
 player_classes_dict = { "Warrior": "Can destroy one card on the table. - 1 use", # {"Class name": "Ability description"}
                         "Mage": "Can change the values of a card on the table by 1. - 2 uses",
                         "Trader": "Can trade one card from their hand with one card on the table. - 1 use",
@@ -112,7 +112,13 @@ class Player(ABC):
         pass
     def activateAbility(self):
         if self.abilityCount > 0:
-            activate_ability = input(f"{self.getName()}, do you want to activate your ability? (y/n) -> ")
+            while True:
+                try:
+                    activate_ability = input(f"{self.getName()}, do you want to activate your ability? (y/n) -> ").lower()
+                    if activate_ability != "n" and activate_ability != "y": raise ValueError
+                    break
+                except ValueError as e:
+                    print("Invalid value!")
             match activate_ability:
                 case "y":
                     self.playerAbility()
@@ -160,10 +166,6 @@ class Player(ABC):
             self.current_bet += x
             self.setBet(x)
         self.has_bet = True
-    def setHasBetBigBlind(self, has_bet_big_blind):
-        self.has_bet_big_blind = has_bet_big_blind
-    def getHasBetBigBlind(self):
-        return self.has_bet_big_blind
     def setBet(self, bet):
         self.bet += bet
         self.has_bet = True
@@ -173,8 +175,6 @@ class Player(ABC):
         return self.current_bet
     def setCurrentBet(self, x):
         self.current_bet = x
-    def getHasBet(self):
-        return self.has_bet
     def setHandValues(self):
         self.handValues.clear()
         for card in self.handCards:
@@ -185,11 +185,6 @@ class Player(ABC):
             if short_hand_values.count(value) >1:
                 short_hand_values.remove(value)
         return short_hand_values
-    def setgetHandValues(self):
-        self.handValues.clear()
-        for card in self.handCards:
-            self.handValues.append(card.getValue())
-            return self.handValues
     def getHandCards(self):
         return self.handCards
     def setHandCards(self, newCards):
@@ -234,7 +229,7 @@ def createPlayer():
                 print(f"({index}) - {key}: {value}")
             print("* - EXCEPTIONS : Gambler ability not available and Bard uses both activations!")
             ability = int(input("\nChoose class: "))
-            if ability > len(player_classes) or ability < 1: raise ValueError
+            if ability > len(player_classes_dict.items()) or ability < 1: raise ValueError
             break
         except ValueError as e:
             print("Please choose a class!")
@@ -394,46 +389,27 @@ class Priest(Player):
         self.abilityCount = 2
     def playerAbility(self):
         print("You activated your ability to change the value or suit of the top card of the deck!")
-        print(f"The next card is {deck.deck[0]}")
+        print(f"The next card is {deck.deck[0].getSuit()}")
         while True:
             try:
-                choice_p = input("Do you want to change the value or the suit of the card? (v/s) -> ").lower()
+                choice_p = input("Do you want to change the suit of the top card of the deck? (y/n) -> ").lower()
                 # if choice_p != 'v' or choice_p != 's': raise ValueError
                 break
             except ValueError as e:
-                print("Please choose between \'v\' and \'s\'!")
+                print("Please enter \'y\' or \'n\'!")
         match choice_p:
-            case "v":
-                choice_p2 = input("Do you want to increase or decrease the value? (+/-) -> ")
-                if choice_p2=='+':
-                    if deck.deck[0].getValue() == 14:
-                        deck.deck[0].setValue(2)
-                    else:
-                        deck.deck[0].setValue(card_values[card_values.index(deck.deck[0].value)+1])
-                elif '-':
-                    if deck.deck[0].getValue() == 2:
-                        deck.deck[0].setValue(14)
-                    else:
-                        deck.deck[0].setValue(card_values[card_values.index(deck.deck[0].value)-1])
-            case "s":
-                while True:
-                    try:
-                        choice_p2 = input("Which suit do you want the card to have? -> ").lower()
-                        if choice_p2 not in short_suits: raise ValueError
-                        break
-                    except ValueError as e:
-                        print("Enter a correct Suit! (d,h,c or s)")
-                match choice_p2:
-                    case "d":
-                        deck.deck[0].setSuit("Diamonds")
-                    case "h":
-                        deck.deck[0].setSuit("Hearts")
-                    case "c":
-                        deck.deck[0].setSuit("Clubs")
-                    case "s":
-                        deck.deck[0].setSuit("Spades")
+            case "y":
+                temp = random.randint(0,99)
+                if temp < 25:
+                    deck.deck[0].setSuit("Diamonds")
+                elif temp < 50:
+                    deck.deck[0].setSuit("Hearts")
+                elif temp < 75:
+                    deck.deck[0].setSuit("Spades")
+                else:
+                    deck.deck[0].setSuit("Clubs")
         self.abilityCount -= 1
-        print(f"Changed the top card to {deck.deck[0]}")
+        print(f"Changed the top card to {deck.deck[0].getSuit()}")
 class Viking(Player):
     def __init__(self, name):
         super().__init__(name)
@@ -513,7 +489,7 @@ class Random(Player):
         super().__init__(name)
         self.abilityCount = 2
     def playerAbility(self):
-        temp = random.randint(0, len(player_classes)-3)
+        temp = random.randint(0, len(player_classes_dict.items())-3)
         match temp:
             case 0:
                 print("WARRIOR ABILITY") 
@@ -537,7 +513,14 @@ class Random(Player):
             case 6: 
                 print("VIKING ABILITY")
                 Viking.playerAbility(self)
+class Prototyp(Player): # Can copy code to create new classes, just add ability code and abilityCount
+    def __init__(self, name):
+        super().__init__(name)
+        #self.abilityCount = PLACEHOLDER
+    def playerAbility(self):
+        # Add Code for ability here
         self.abilityCount -= 1
+        pass
 
 class Pot:
     def __init__(self):
@@ -549,8 +532,8 @@ class Pot:
     def addMoney(self, x):
         self.money += x
     def potToWinner(self):
-        for player in playerWin:
-            player.addMoney(int(self.money/len(playerWin)))
+        for player in player_win:
+            player.addMoney(int(self.money/len(player_win)))
 def nextTurnWithAbilities(draw, index): # Next turn where every player can activate their ability once per turn - Multiplayer
     # os.system("\n\npause")
     os.system("cls")
@@ -577,9 +560,9 @@ def nextTurnWithAbilities(draw, index): # Next turn where every player can activ
         nextTurnWithAbilities(False, index+1)
         # lastTurn()
     else:
-        os.system("pause")
+        # os.system("pause")
         lastTurn()
-def lastTurn():                         # Finishing turn where all players can activate their abilities one more time
+def lastTurn():                         # Finishing turn where all player's cards are revealed together with the community cards
     for player in player_list:
         player.printHand()
     table.printCards()
@@ -608,7 +591,6 @@ def checkStraight(player):              # Check player's hand for Flush
     count=0
     straightCards = []
     has_straight=False
-    values = player.setgetHandValues()
     # Check every card in hand
     for i in range(7):
         if  i+1 == 7:
@@ -821,7 +803,7 @@ def stackDeck1PFlush():                 # Method to check if Flush is working
     deck.deck[3] = Card(5,"Diamonds", 4) 
     deck.deck[4] = Card(6,"Diamonds", 5)
     deck.deck[5] = Card(4, "Spades",  6)
-def stackDeck2PSameCards():             # 2Players have same values in hand
+def stackDeck2PSameCards():             # 2 Players have same values in hand
     deck.deck[0] = Card(2,"Diamonds",   1) #P1
     deck.deck[1] = Card(3,"Spades",     2) #P1
     deck.deck[2] = Card(3,"Clubs",      3) #P2
@@ -866,7 +848,10 @@ def blinds():                           # Sets the blind values and automaticall
     last_bet = big_blind
 def startGameBets(is_blind_round):      # BETTING SYSTEM
     if len(player_list) > 1:
-        random.shuffle(player_list)
+        if is_blind_round: # In blind round shuffle player list and make first player the dealer
+            random.shuffle(player_list)
+        else: # If not blind round, rotate through the list and make next player the dealer
+            player_list.append(player_list.pop(0))
         global big_blind_player
         global last_bet
         global big_blind
@@ -884,8 +869,6 @@ def startGameBets(is_blind_round):      # BETTING SYSTEM
                 current_bet = 0
             for player in player_list:
                 if player == big_blind_player and turn_count == 0 and is_blind_round: # Skip big blind player in the first betting round of the game
-                    # player.setHasBetBigBlind(True)
-                    # last_player = player
                     continue
                 os.system("cls")
                 print(f"\n{player.getName()}, it is your turn to bet!")
@@ -984,13 +967,10 @@ def startGameBets(is_blind_round):      # BETTING SYSTEM
         os.system("pause")
         os.system("cls")
 def main():
-    global last_bet
-    global pot
-    global split_pot
+    global last_bet, all_in_value
+    global pot, split_pot
     global deck 
-    global all_in_value
-    global player_list
-    global playerCount
+    global player_list, player_count
     all_in_value = 0
     pot = Pot()
     split_pot = Pot()
@@ -1002,25 +982,22 @@ def main():
     player_list = []
     while True: # ask for player count and raise error if wrong input
         try:
-            playerCount = int(input("How many players? "))
-            if playerCount > 5: raise ValueError
+            player_count = input("How many players? ")
+            if player_count.lower() == "yes":
+                player_count = 23
+            else: player_count = int(player_count)
+            if player_count > 5 and player_count != 23: raise ValueError
             break
         except ValueError as e:
             print("Enter a valid number!")
-    for i in range(playerCount): # Create players according to player count
+    for i in range(player_count): # Create players according to player count
         createPlayer()
-
-    #Takes care of betting, also embedded in the turn loop
-    startGameBets(True)
-
-    # for player in playerList: # print every player's hand
-    #     player.printHand()
+    startGameBets(True) # Starts the betting round, also embedded in the turn loop
     for player in player_list: # Let bards mulligan if they want
         if type(player).__name__ == "Bard":
             print(f"{player.getName()}'s turn to mulligan.")
             os.system("pause")
-            player.bardAbility()
-    # os.system("pause")
+            player.playerAbility()
     os.system("cls")
     global table
     table = Table()
@@ -1034,52 +1011,53 @@ def main():
     #Sort players by score, highest first. Then check if players have the same score
     player_list.sort(key=Player.getScore, reverse=True)
     playersToCompare = []
-    global playerWin
-    playerWin = []
-    playerWin.append(player_list[0])
-    if len(player_list) > 1:
-        if player_list[0].getScore() > player_list[1].getScore():
-            pass
-        else: # add players with equal score to a list that's compared later
-            for i in range(playerCount-1):
+    global player_win
+    player_win = []
+    player_win.append(player_list[0])
+    #region Compare player with same score
+    if len(player_win) > 1:
+        if player_win[0].getScore() == player_win[1].getScore(): # add players with equal score to a list that's compared later
+            for i in range(player_count-1):
                 if player_list[i].getScore() == player_list[i+1].getScore():
                     if player_list[i] not in playersToCompare:
                         playersToCompare.append(player_list[i])
                     if player_list[i+1] not in playersToCompare:
                         playersToCompare.append(player_list[i+1])
-                        # print(f"DEBUG : Added {playerList[i].getName()} to playersToCompare")
+                        # print(f"DEBUG : Added {player_list[i].getName()} to playersToCompare")
     # print(f"--- DEBUG : playersToCompare List ---")
     # for player in playersToCompare:
     #     print(player.getName())
     # print(f"--- DEBUG END ---")
+    # endregion
+
     # If more than 2 players have the same score, check who has the highest value card
     # Compare highest card between 2 players, if they're the same, compare the next cards
     # If one card is higher than the other, compare the winning player with the next player
     if len(playersToCompare)>=2:
-        playerWin[0] = compareCards(playersToCompare)
+        player_win[0] = compareCards(playersToCompare)
     else:
-        playerWin[0] = player_list[0]
-        for j in range(0, playerCount):
-            if playerWin[0] == player_list[j]:
+        player_win[0] = player_list[0]
+        for j in range(0, player_count):
+            if player_win[0] == player_list[j]:
                 continue
-            if playerWin[0].getScore() < player_list[j].getScore():
-                playerWin[0] = player_list[j]
+            if player_win[0].getScore() < player_list[j].getScore():
+                player_win[0] = player_list[j]
                 # print(f"--- DEBUG : {playerList[j].getName()} is new playerWin")
     for player in player_list: # Compare every player's hand with winner's hand. If they have the same cards, add other player to winners
-        if player == playerWin[0]:
+        if player == player_win[0]:
             # print(f" --- DEBUG : Same Player! ---")
             continue
         # print(f" --- DEBUG : {playerWin[0].getName()} has {playerWin[0].getHandValues()} ---")
         # print(f" --- DEBUG : {player.getName()} has {player.getHandValues()} ---")
-        if playerWin[0].getHandValues() == player.getHandValues() and playerWin[0].getScore() == player.getScore():
+        if player_win[0].getHandValues() == player.getHandValues() and player_win[0].getScore() == player.getScore():
             # print(f" --- DEBUG : {player.getName()} added to winning players! ---")
-            playerWin.append(player)
+            player_win.append(player)
     print()
     pot.potToWinner()
     if split_pot.getMoney() > 0:
         split_pot.potToWinner()
     for player in player_list:
-        if player in playerWin:
+        if player in player_win:
             print(f"Player {player.getName()} has won and has {player.getMoney()} gold.")
         else:
             print(f"Player {player.getName()} has {player.getMoney()} gold left.")
